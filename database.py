@@ -141,18 +141,38 @@ def musteri_ekle(firma_adi, yetkili="", telefon="", sehir="", risk_limiti=0.0, u
     conn.close()
 
 # --- ZİYARET ---
-def ziyaretleri_getir(user_email=None):
+def ziyaretleri_getir(musteri_bilgisi=None):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    if user_email:
-        cursor.execute(f"SELECT id, customer_name, visit_date, notes, status FROM visits WHERE user_email = {param}", (user_email,))
+    
+    if musteri_bilgisi:
+        # Hem müşteri adına hem de e-postaya göre esnek arama
+        query = f"SELECT id, customer_name, visit_date, notes, status FROM visits WHERE customer_name = {param} OR user_email = {param}"
+        cursor.execute(query, (str(musteri_bilgisi), str(musteri_bilgisi)))
     else:
         cursor.execute("SELECT id, customer_name, visit_date, notes, status FROM visits")
+        
     rows = cursor.fetchall()
     conn.close()
     return rows
 
+def ziyaret_ekle(customer_name, visit_date, notes="", status="Tamamlandı", user_email="sistem@kutluk.com"):
+    conn = get_connection()
+    cursor = conn.cursor()
+    param = "%s" if DATABASE_URL else "?"
+    
+    query = f"""
+        INSERT INTO visits (user_email, customer_name, visit_date, notes, status)
+        VALUES ({param}, {param}, {param}, {param}, {param})
+    """
+    cursor.execute(query, (str(user_email), str(customer_name), str(visit_date), str(notes), str(status)))
+    conn.commit()
+    conn.close()
+
+# Takma adlar (Alias)
+saha_ziyaretleri_getir = ziyaretleri_getir
+saha_ziyareti_ekle = ziyaret_ekle
 def ziyaret_ekle(user_email, customer_name, visit_date, notes, status):
     conn = get_connection()
     cursor = conn.cursor()
