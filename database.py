@@ -170,6 +170,10 @@ def ziyaret_ekle(customer_name, visit_date, notes="", status="Tamamlandı", user
     conn.commit()
     conn.close()
 
+# app.py'nin 3 parametreli çağrısını (musteri, tarih, notlar) doğrudan karşılayan wrapper:
+def saha_ziyareti_ekle(customer_name, visit_date, notes="", status="Tamamlandı", user_email="sistem@kutluk.com"):
+    return ziyaret_ekle(customer_name, visit_date, notes, status, user_email)
+
 saha_ziyareti_ekle = ziyaret_ekle
 
 # Takma ad (Alias)
