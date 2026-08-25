@@ -5,7 +5,6 @@ import bcrypt
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
-    """Bulut DB adresi varsa PostgreSQL'e, yoksa yerel SQLite veritabanına bağlanır."""
     if DATABASE_URL:
         import psycopg2
         return psycopg2.connect(DATABASE_URL)
@@ -14,13 +13,12 @@ def get_connection():
         return conn
 
 def init_db():
-    """Veritabanı tablolarını ilklendirir (PostgreSQL & SQLite Uyumlu)."""
     conn = get_connection()
     cursor = conn.cursor()
     
     id_type = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
-    # Kullanıcılar Tablosu
+    # Kullanıcılar
     cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS users (
             id {id_type},
@@ -33,7 +31,7 @@ def init_db():
         )
     """)
     
-    # Müşteriler Tablosu
+    # Müşteriler
     cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS customers (
             id {id_type},
@@ -48,7 +46,7 @@ def init_db():
         )
     """)
     
-    # Saha Ziyaretleri Tablosu
+    # Saha Ziyaretleri
     cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS visits (
             id {id_type},
@@ -60,33 +58,44 @@ def init_db():
         )
     """)
     
+    # Stok / Ürünler Tablosu
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS stocks (
+            id {id_type},
+            user_email TEXT NOT NULL,
+            product_code TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            category TEXT,
+            quantity INTEGER DEFAULT 0,
+            price REAL DEFAULT 0.0
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
-# Uyumsuzluk önleme alias'ları
 tablolari_olustur = init_db
 
-# --- ŞİFRELEME İŞLEMLERİ ---
+# --- ŞİFRELEME ---
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def check_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-# --- KULLANICI İŞLEMLERİ ---
+# --- KULLANICI ---
 def register_user(full_name, phone, email, address, password):
     conn = get_connection()
     cursor = conn.cursor()
     pw_hash = hash_password(password)
     param = "%s" if DATABASE_URL else "?"
-    
     try:
         query = f"INSERT INTO users (full_name, phone, email, address, password_hash) VALUES ({param}, {param}, {param}, {param}, {param})"
         cursor.execute(query, (full_name, phone, email.lower().strip(), address, pw_hash))
         conn.commit()
-        return True, "Kayıt başarıyla oluşturuldu! Giriş yapabilirsiniz."
+        return True, "Kayıt başarılı!"
     except Exception as e:
-        return False, f"Kayıt hatası: {str(e)}"
+        return False, f"Hata: {str(e)}"
     finally:
         conn.close()
 
@@ -94,33 +103,22 @@ def login_user(email, password):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    query = f"SELECT full_name, phone, email, address, password_hash FROM users WHERE email = {param}"
-    
-    cursor.execute(query, (email.lower().strip(),))
+    cursor.execute(f"SELECT full_name, phone, email, address, password_hash FROM users WHERE email = {param}", (email.lower().strip(),))
     user = cursor.fetchone()
     conn.close()
-    
     if user and check_password(password, user[4]):
-        return {
-            "full_name": user[0],
-            "phone": user[1],
-            "email": user[2],
-            "address": user[3]
-        }
+        return {"full_name": user[0], "phone": user[1], "email": user[2], "address": user[3]}
     return None
 
-# --- MÜŞTERİ İŞLEMLERİ ---
+# --- MÜŞTERİ ---
 def musterileri_getir(user_email=None):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    
     if user_email:
-        query = f"SELECT id, company_name, authorized_person, phone, city, address, balance FROM customers WHERE user_email = {param}"
-        cursor.execute(query, (user_email,))
+        cursor.execute(f"SELECT id, company_name, authorized_person, phone, city, address, balance FROM customers WHERE user_email = {param}", (user_email,))
     else:
         cursor.execute("SELECT id, company_name, authorized_person, phone, city, address, balance FROM customers")
-        
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -129,27 +127,20 @@ def musteri_ekle(user_email, company_name, authorized_person, phone, city, addre
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    
-    query = f"""
-        INSERT INTO customers (user_email, company_name, authorized_person, phone, city, address, balance)
-        VALUES ({param}, {param}, {param}, {param}, {param}, {param}, {param})
-    """
-    cursor.execute(query, (user_email, company_name, authorized_person, phone, city, address, balance))
+    cursor.execute(f"INSERT INTO customers (user_email, company_name, authorized_person, phone, city, address, balance) VALUES ({param}, {param}, {param}, {param}, {param}, {param}, {param})",
+                   (user_email, company_name, authorized_person, phone, city, address, balance))
     conn.commit()
     conn.close()
 
-# --- SAHA ZİYARETLERİ İŞLEMLERİ ---
+# --- ZİYARET ---
 def ziyaretleri_getir(user_email=None):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    
     if user_email:
-        query = f"SELECT id, customer_name, visit_date, notes, status FROM visits WHERE user_email = {param}"
-        cursor.execute(query, (user_email,))
+        cursor.execute(f"SELECT id, customer_name, visit_date, notes, status FROM visits WHERE user_email = {param}", (user_email,))
     else:
         cursor.execute("SELECT id, customer_name, visit_date, notes, status FROM visits")
-        
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -158,14 +149,35 @@ def ziyaret_ekle(user_email, customer_name, visit_date, notes, status):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    
-    query = f"""
-        INSERT INTO visits (user_email, customer_name, visit_date, notes, status)
-        VALUES ({param}, {param}, {param}, {param}, {param})
-    """
-    cursor.execute(query, (user_email, customer_name, str(visit_date), notes, status))
+    cursor.execute(f"INSERT INTO visits (user_email, customer_name, visit_date, notes, status) VALUES ({param}, {param}, {param}, {param}, {param})",
+                   (user_email, customer_name, str(visit_date), notes, status))
     conn.commit()
     conn.close()
-    # app.py'deki saha ziyaretleri fonksiyon isim uyumsuzluğunu çözen takma adlar:
+
 saha_ziyaretleri_getir = ziyaretleri_getir
 saha_ziyareti_ekle = ziyaret_ekle
+
+# --- STOK / ÜRÜN ---
+def stoklari_getir(user_email=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+    param = "%s" if DATABASE_URL else "?"
+    if user_email:
+        cursor.execute(f"SELECT id, product_code, product_name, category, quantity, price FROM stocks WHERE user_email = {param}", (user_email,))
+    else:
+        cursor.execute("SELECT id, product_code, product_name, category, quantity, price FROM stocks")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def stok_ekle(user_email, product_code, product_name, category, quantity, price):
+    conn = get_connection()
+    cursor = conn.cursor()
+    param = "%s" if DATABASE_URL else "?"
+    cursor.execute(f"INSERT INTO stocks (user_email, product_code, product_name, category, quantity, price) VALUES ({param}, {param}, {param}, {param}, {param}, {param})",
+                   (user_email, product_code, product_name, category, quantity, price))
+    conn.commit()
+    conn.close()
+
+urunleri_getir = stoklari_getir
+urun_ekle = stok_ekle
