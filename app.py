@@ -62,7 +62,7 @@ st.sidebar.caption(f"🏢 {user['address']}")
 if st.sidebar.button("Çıkış Yap"):
     st.session_state["user"] = None
     st.rerun()
-    
+
 import streamlit as st
 import database as db
 import pandas as pd
@@ -72,7 +72,7 @@ import yfinance as yf
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="Otomotiv B2B Saha & Stok Takip", layout="wide")
-db.tabloları_olustur()
+db.tablolari_olustur()
 
 # --- ÖZEL CSS (Göz Yormayan Tipografi ve Kayar Yazı CSS) ---
 st.markdown("""
