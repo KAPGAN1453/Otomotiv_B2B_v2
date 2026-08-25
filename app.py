@@ -1,5 +1,70 @@
 import streamlit as st
 import database as db
+
+# Veritabanını ilklendir
+db.init_db()
+
+# Oturum Durumu Kontrolü
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
+# --- EĞER KULLANICI GİRİŞ YAPMAMIŞSA ---
+if st.session_state["user"] is None:
+    st.title("🔒 Kutluk B2B & Saha Yönetim Portalı")
+    
+    tab_login, tab_register = st.tabs(["🔑 Giriş Yap", "📝 Kayıt Ol (Yeni İşletme)"])
+    
+    with tab_login:
+        st.subheader("İşletme Girişi")
+        login_email = st.text_input("E-Posta Adresi", key="login_email")
+        login_password = st.text_input("Şifre", type="password", key="login_pw")
+        
+        if st.button("Giriş Yap", type="primary"):
+            user_info = db.login_user(login_email, login_password)
+            if user_info:
+                st.session_state["user"] = user_info
+                st.success(f"Hoş geldiniz, {user_info['full_name']}!")
+                st.rerun()
+            else:
+                st.error("E-posta adresi veya şifre hatalı!")
+                
+    with tab_register:
+        st.subheader("Yeni Üyelik Oluştur")
+        with st.form("register_form"):
+            reg_name = st.text_input("Ad Soyad")
+            reg_phone = st.text_input("Cep Telefonu")
+            reg_email = st.text_input("E-Posta Adresi")
+            reg_address = st.text_area("İşyeri Adresi")
+            reg_password = st.text_input("Şifre", type="password")
+            reg_password_confirm = st.text_input("Şifre (Tekrar)", type="password")
+            
+            submit_btn = st.form_submit_button("Kayıt Ol")
+            
+            if submit_btn:
+                if not reg_name or not reg_phone or not reg_email or not reg_password:
+                    st.warning("Lütfen tüm zorunlu alanları doldurun.")
+                elif reg_password != reg_password_confirm:
+                    st.error("Şifreler birbiriyle eşleşmiyor!")
+                else:
+                    success, msg = db.register_user(reg_name, reg_phone, reg_email, reg_address, reg_password)
+                    if success:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+    st.stop() # Giriş yapılmadığı sürece panelin kalanını yükleme
+
+# --- KULLANICI GİRİŞ YAPTIYSA UYGULAMA AÇILIR ---
+user = st.session_state["user"]
+
+# Sol menüye oturum kapatma ve profil bilgisi
+st.sidebar.write(f"👤 **{user['full_name']}**")
+st.sidebar.caption(f"🏢 {user['address']}")
+if st.sidebar.button("Çıkış Yap"):
+    st.session_state["user"] = None
+    st.rerun()
+    
+import streamlit as st
+import database as db
 import pandas as pd
 from datetime import date
 import io
