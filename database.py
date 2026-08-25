@@ -111,3 +111,5 @@ def login_user(email, password):
             "address": user[3]
         }
     return None
+# app.py içindeki çağrı ile uyumluluk sağlamak için alias ekliyoruz:
+tablolari_olustur = init_db
