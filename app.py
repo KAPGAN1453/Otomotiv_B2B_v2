@@ -72,7 +72,7 @@ import yfinance as yf
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="Otomotiv B2B Saha & Stok Takip", layout="wide")
-db.tablolari_olustur()
+db.init_db()
 
 # --- ÖZEL CSS (Göz Yormayan Tipografi ve Kayar Yazı CSS) ---
 st.markdown("""

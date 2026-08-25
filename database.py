@@ -5,7 +5,7 @@ import bcrypt
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
-    """Bulut DB adresi varsa PostgreSQL'e, yoksa yerel SQLite veritabanına bağlanır."""
+    """Bulut DB adresi varsa PostgreSQL'e, yoksa yerel SQLite veritabanina bağlanir."""
     if DATABASE_URL:
         import psycopg2
         return psycopg2.connect(DATABASE_URL)
@@ -14,7 +14,7 @@ def get_connection():
         return conn
 
 def init_db():
-    """Veritabanı tablolarını ilklendirir (PostgreSQL & SQLite Uyumlu)."""
+    """Veritabani tablolarini ilklendirir (PostgreSQL & SQLite Uyumlu)."""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -85,14 +85,14 @@ def register_user(full_name, phone, email, address, password):
         query = f"INSERT INTO users (full_name, phone, email, address, password_hash) VALUES ({param}, {param}, {param}, {param}, {param})"
         cursor.execute(query, (full_name, phone, email.lower().strip(), address, pw_hash))
         conn.commit()
-        return True, "Kayıt başarıyla oluşturuldu! Giriş yapabilirsiniz."
+        return True, "Kayit başariyla oluşturuldu! Giriş yapabilirsiniz."
     except Exception as e:
-        return False, f"Kayıt hatası (Bu e-posta adresi zaten kayıtlı olabilir): {str(e)}"
+        return False, f"Kayit hatasi (Bu e-posta adresi zaten kayıtlı olabilir): {str(e)}"
     finally:
         conn.close()
 
 def login_user(email, password):
-    """Kullanıcı girişini doğrular."""
+    """Kullanici girişini doğrular."""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -111,6 +111,8 @@ def login_user(email, password):
             "address": user[3]
         }
     return None
+# app.py içindeki çağrı ile uyumluluk sağlamak için alias ekliyoruz:
+tablolari_olustur = init_db
 # Her iki isimle de çağrılabilmesi için Türkçe ve İngilizce alias tanımlıyoruz:
 tablolari_olustur = init_db
 tablolari_olustur = init_db
