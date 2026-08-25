@@ -170,6 +170,9 @@ def ziyaret_ekle(customer_name, visit_date, notes="", status="Tamamlandı", user
     conn.commit()
     conn.close()
 
+# Takma ad (Alias)
+saha_ziyareti_ekle = ziyaret_ekle
+
 # Takma adlar (Alias)
 saha_ziyaretleri_getir = ziyaretleri_getir
 saha_ziyareti_ekle = ziyaret_ekle
