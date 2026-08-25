@@ -2,7 +2,6 @@ import os
 import sqlite3
 import bcrypt
 
-# Bulut veritabanı (PostgreSQL) bağlantı adresi (Supabase entegrasyonu için)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
@@ -15,14 +14,17 @@ def get_connection():
         return conn
 
 def init_db():
-    """Veritabanı tablolarını ilklendirir."""
+    """Veritabanı tablolarını ilklendirir (PostgreSQL & SQLite Uyumlu)."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    # SaaS Kullanıcılar Tablosu (Giriş/Kayıt Bilgileri)
-    cursor.execute("""
+    # DB Türüne göre ID veri tipini belirle
+    id_type = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    # Kullanıcılar Tablosu
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             full_name TEXT NOT NULL,
             phone TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
@@ -32,10 +34,10 @@ def init_db():
         )
     """)
     
-    # Müşteriler Tablosu (Cari & Firma Kayıtları)
-    cursor.execute("""
+    # Müşteriler Tablosu
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_email TEXT NOT NULL,
             company_name TEXT NOT NULL,
             authorized_person TEXT,
@@ -48,9 +50,9 @@ def init_db():
     """)
     
     # Saha Ziyaretleri Tablosu
-    cursor.execute("""
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS visits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_email TEXT NOT NULL,
             customer_name TEXT NOT NULL,
             visit_date TEXT NOT NULL,
@@ -62,24 +64,26 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- GÜVENLİK VE ŞİFRE HASHLEME ---
+# --- ŞİFRELEME İŞLEMLERİ ---
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def check_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-# --- SAAS KULLANICI İŞLEMLERİ ---
+# --- KULLANICI İŞLEMLERİ ---
 def register_user(full_name, phone, email, address, password):
-    """Yeni işletme/kullanıcı kaydeder."""
+    """Yeni üye/işletme kaydeder."""
     conn = get_connection()
     cursor = conn.cursor()
     pw_hash = hash_password(password)
+    
+    # SQL parametre işareti: PostgreSQL için %s, SQLite için ?
+    param = "%s" if DATABASE_URL else "?"
+    
     try:
-        cursor.execute(
-            "INSERT INTO users (full_name, phone, email, address, password_hash) VALUES (?, ?, ?, ?, ?)",
-            (full_name, phone, email.lower().strip(), address, pw_hash)
-        )
+        query = f"INSERT INTO users (full_name, phone, email, address, password_hash) VALUES ({param}, {param}, {param}, {param}, {param})"
+        cursor.execute(query, (full_name, phone, email.lower().strip(), address, pw_hash))
         conn.commit()
         return True, "Kayıt başarıyla oluşturuldu! Giriş yapabilirsiniz."
     except Exception as e:
@@ -91,7 +95,11 @@ def login_user(email, password):
     """Kullanıcı girişini doğrular."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT full_name, phone, email, address, password_hash FROM users WHERE email = ?", (email.lower().strip(),))
+    
+    param = "%s" if DATABASE_URL else "?"
+    query = f"SELECT full_name, phone, email, address, password_hash FROM users WHERE email = {param}"
+    
+    cursor.execute(query, (email.lower().strip(),))
     user = cursor.fetchone()
     conn.close()
     
