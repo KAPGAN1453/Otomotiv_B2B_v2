@@ -123,12 +123,20 @@ def musterileri_getir(user_email=None):
     conn.close()
     return rows
 
-def musteri_ekle(user_email, company_name, authorized_person, phone, city, address, balance=0.0):
+def musteri_ekle(firma_adi, yetkili="", telefon="", sehir="", risk_limiti=0.0, user_email=None, address="", balance=0.0):
     conn = get_connection()
     cursor = conn.cursor()
     param = "%s" if DATABASE_URL else "?"
-    cursor.execute(f"INSERT INTO customers (user_email, company_name, authorized_person, phone, city, address, balance) VALUES ({param}, {param}, {param}, {param}, {param}, {param}, {param})",
-                   (user_email, company_name, authorized_person, phone, city, address, balance))
+    
+    # user_email boş geldiyse varsayılan değer ver
+    if not user_email:
+        user_email = "sistem@kutluk.com"
+        
+    query = f"""
+        INSERT INTO customers (user_email, company_name, authorized_person, phone, city, address, balance)
+        VALUES ({param}, {param}, {param}, {param}, {param}, {param}, {param})
+    """
+    cursor.execute(query, (user_email, firma_adi, yetkili, telefon, sehir, address, balance))
     conn.commit()
     conn.close()
 
