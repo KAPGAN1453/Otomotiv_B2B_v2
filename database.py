@@ -166,3 +166,6 @@ def ziyaret_ekle(user_email, customer_name, visit_date, notes, status):
     cursor.execute(query, (user_email, customer_name, str(visit_date), notes, status))
     conn.commit()
     conn.close()
+    # app.py'deki saha ziyaretleri fonksiyon isim uyumsuzluğunu çözen takma adlar:
+saha_ziyaretleri_getir = ziyaretleri_getir
+saha_ziyareti_ekle = ziyaret_ekle
